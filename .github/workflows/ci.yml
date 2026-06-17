@@ -2,6 +2,9 @@ on:
   push:
     branches:
       - main
+      # TEMP: enable CI on fork dev branches for smoke validation (remove before upstream PR)
+      - dev/canardleteer/ci-client-smoke
+      - dev/canardleteer/ci-client-smoke-baseline
   pull_request:
   release:
     types: [published]
@@ -33,6 +36,7 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run build
+      - run: npm run test:client-smoke
       - run: npm test
 
   publish:
