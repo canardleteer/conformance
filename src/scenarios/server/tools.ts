@@ -25,7 +25,8 @@ import {
 
 /**
  * Tool name format validation tracks dated MCP spec prose (2025-11-25+
- * `#tool-names`), not the SEP-986 markdown file.
+ * `#tool-names`), not the SEP-986 markdown file. specReferences link only to
+ * the core specification; there is no sep-986.yaml traceability row.
  *
  * Divergence to preserve when updating this check:
  * - SEP-986 markdown (modelcontextprotocol#986): 1–64 chars, `[A-Za-z0-9_./-]`
@@ -40,15 +41,13 @@ const TOOL_NAME_PATTERN = /^[A-Za-z0-9_.-]+$/;
 const TOOL_NAME_MAX_LENGTH = 128;
 
 const TOOLS_NAME_FORMAT_SPEC_REFS = [
-  // Authoritative rule source: dated spec prose (AGENTS.md: verify spec diff, not SEP markdown).
   {
     id: 'MCP-Tool-Names',
     url: 'https://modelcontextprotocol.io/specification/2025-11-25/server/tools#tool-names'
   },
-  // Traceability back to SEP-986; the SEP file still documents stale 64 + '/' rules.
   {
-    id: 'SEP-986',
-    url: 'https://github.com/modelcontextprotocol/modelcontextprotocol/issues/986'
+    id: 'MCP-Tool-Names-Draft',
+    url: 'https://modelcontextprotocol.io/specification/draft/server/tools#tool-names'
   }
 ];
 
@@ -190,7 +189,7 @@ export class ToolsListScenario implements ClientScenario {
 
       // Gate per AGENTS.md version applicability: Tool Names prose is 2025-11-25+ only.
       // everything-server already passes on applicable versions (positive path in
-      // all-scenarios.test.ts); failure proof is sep-986-invalid-tool-names.ts.
+      // all-scenarios.test.ts); failure proof is sep-986-invalid-tool-names.ts (filename only).
       if (toolNameFormatCheckApplies(ctx.specVersion)) {
         checks.push(buildToolsNameFormatCheck(result.tools));
       }

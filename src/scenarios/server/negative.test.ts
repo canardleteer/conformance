@@ -212,7 +212,7 @@ describe('Server scenario negative tests', () => {
     }, 10000);
   });
 
-  describe('sep-986-tool-names', () => {
+  describe('tools-name-format', () => {
     // AGENTS.md: negative vitest pins tools-name-format → WARNING, not failures.length.
     let serverProcess: ChildProcess | null = null;
     const PORT = 3009;

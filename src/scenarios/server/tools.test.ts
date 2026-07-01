@@ -111,12 +111,16 @@ describe('buildToolsNameFormatCheck', () => {
     );
   });
 
-  it('includes MCP-Tool-Names spec reference and SEP-986 traceability link', () => {
+  it('includes only core spec Tool Names references (not SEP-986)', () => {
     const check = buildToolsNameFormatCheck([{ name: 'ok' }]);
     const ids = check.specReferences?.map((r) => r.id);
-    expect(ids).toEqual(['MCP-Tool-Names', 'SEP-986']);
-    expect(check.specReferences?.[0]?.url).toContain('#tool-names');
-    expect(check.specReferences?.[1]?.url).toContain('issues/986');
+    expect(ids).toEqual(['MCP-Tool-Names', 'MCP-Tool-Names-Draft']);
+    expect(check.specReferences?.[0]?.url).toContain(
+      '2025-11-25/server/tools#tool-names'
+    );
+    expect(check.specReferences?.[1]?.url).toContain(
+      'draft/server/tools#tool-names'
+    );
   });
 });
 
