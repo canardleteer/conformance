@@ -1,8 +1,8 @@
 /**
  * JSON-RPC batch rejection test scenario for MCP servers.
  *
- * Batch support was removed in 2025-06-18; servers MUST reject POST bodies
- * that are JSON arrays of request objects.
+ * Batch arrays violate the Streamable HTTP transport MUST: "The body of the POST
+ * request MUST be a single JSON-RPC request, notification, or response."
  *
  * Probe design (AGENTS.md: distinguish rejection from unrelated errors):
  * - Stateful (2025-06-18 / 2025-11-25): initialize first, then POST a two-request
@@ -27,12 +27,16 @@ import { request } from 'undici';
 
 const SPEC_REFERENCES = [
   {
-    id: 'MCP-2025-06-18-Changelog',
-    url: 'https://modelcontextprotocol.io/specification/2025-06-18/changelog#major-changes'
+    id: 'MCP-Transports-POST-Body',
+    url: 'https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#sending-messages-to-the-server'
   },
   {
-    id: 'MCP-Transports',
-    url: 'https://modelcontextprotocol.io/specification/2025-11-25/basic/transports'
+    id: 'MCP-Transports-POST-Body-2025-11-25',
+    url: 'https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#sending-messages-to-the-server'
+  },
+  {
+    id: 'MCP-2025-06-18-Changelog',
+    url: 'https://modelcontextprotocol.io/specification/2025-06-18/changelog#major-changes'
   }
 ];
 
@@ -183,11 +187,10 @@ export class JsonRpcBatchRejectionScenario implements ClientScenario {
   readonly source = { introducedIn: '2025-06-18' } as const;
   description = `Test that the server rejects JSON-RPC batch requests.
 
-**Scope:** From 2025-06-18 onward MCP no longer supports JSON-RPC batch arrays on the wire.
+**Scope:** From 2025-06-18 onward, Streamable HTTP POST bodies **MUST** be a single JSON-RPC message (not a JSON array).
 
 **Requirements:**
-- Server **MUST** reject an HTTP POST body that is a JSON array of JSON-RPC request objects
-- Rejection is expected to use an HTTP \`4xx\` status with a single JSON-RPC error object (commonly \`400\` with \`-32600\` Invalid Request)`;
+- Per [transports#sending-messages-to-the-server](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#sending-messages-to-the-server): the POST body **MUST** be a single JSON-RPC _request_, _notification_, or _response_; a JSON array **MUST** be rejected (HTTP \`4xx\`, commonly \`400\` with a JSON-RPC error)`;
 
   async run(ctx: RunContext): Promise<ConformanceCheck[]> {
     const { serverUrl, specVersion } = ctx;
@@ -196,7 +199,7 @@ export class JsonRpcBatchRejectionScenario implements ClientScenario {
       id: 'json-rpc-batch-rejected',
       name: 'JsonRpcBatchRejected',
       description:
-        'Server rejects JSON-RPC batch POST bodies (JSON array of requests)',
+        'POST body MUST be a single JSON-RPC message; batch arrays MUST be rejected',
       timestamp,
       specReferences: SPEC_REFERENCES
     };
