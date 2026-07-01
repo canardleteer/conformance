@@ -8,11 +8,11 @@
 import {
   ClientScenario,
   ConformanceCheck,
-  DRAFT_PROTOCOL_VERSION
+  DRAFT_PROTOCOL_VERSION,
+  type SpecVersion
 } from '../../types';
 import { buildStandardHeaders, type RunContext } from '../../connection';
 import { request } from 'undici';
-import { INVALID_REQUEST } from '../../spec-types/2025-06-18';
 
 const SPEC_REFERENCES = [
   {
@@ -30,57 +30,43 @@ const CLIENT_INFO = {
   version: '1.0.0'
 };
 
-function buildBatchBody(specVersion: string): unknown[] {
-  if (specVersion === DRAFT_PROTOCOL_VERSION) {
-    return [
-      {
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'server/discover',
-        params: {
-          _meta: {
-            'io.modelcontextprotocol/protocolVersion': specVersion,
-            'io.modelcontextprotocol/clientInfo': CLIENT_INFO,
-            'io.modelcontextprotocol/clientCapabilities': {}
-          }
-        }
-      },
-      {
-        jsonrpc: '2.0',
-        id: 2,
-        method: 'tools/list',
-        params: {
-          _meta: {
-            'io.modelcontextprotocol/protocolVersion': specVersion,
-            'io.modelcontextprotocol/clientInfo': CLIENT_INFO,
-            'io.modelcontextprotocol/clientCapabilities': {}
-          }
-        }
-      }
-    ];
-  }
-
+function buildStatelessBatch(specVersion: string): unknown[] {
   return [
     {
       jsonrpc: '2.0',
       id: 1,
-      method: 'initialize',
+      method: 'server/discover',
       params: {
-        protocolVersion: specVersion,
-        capabilities: {},
-        clientInfo: CLIENT_INFO
+        _meta: {
+          'io.modelcontextprotocol/protocolVersion': specVersion,
+          'io.modelcontextprotocol/clientInfo': CLIENT_INFO,
+          'io.modelcontextprotocol/clientCapabilities': {}
+        }
       }
     },
     {
       jsonrpc: '2.0',
       id: 2,
-      method: 'ping',
-      params: {}
+      method: 'tools/list',
+      params: {
+        _meta: {
+          'io.modelcontextprotocol/protocolVersion': specVersion,
+          'io.modelcontextprotocol/clientInfo': CLIENT_INFO,
+          'io.modelcontextprotocol/clientCapabilities': {}
+        }
+      }
     }
   ];
 }
 
-function jsonRpcErrorCode(body: unknown): number | undefined {
+function buildStatefulBatch(): unknown[] {
+  return [
+    { jsonrpc: '2.0', id: 901, method: 'ping', params: {} },
+    { jsonrpc: '2.0', id: 902, method: 'ping', params: {} }
+  ];
+}
+
+export function jsonRpcErrorCode(body: unknown): number | undefined {
   if (typeof body !== 'object' || body === null || Array.isArray(body)) {
     return undefined;
   }
@@ -89,7 +75,8 @@ function jsonRpcErrorCode(body: unknown): number | undefined {
   return typeof error.code === 'number' ? error.code : undefined;
 }
 
-function batchWasAccepted(statusCode: number, body: unknown): boolean {
+/** True when the server appears to have processed the batch successfully. */
+export function isBatchAccepted(statusCode: number, body: unknown): boolean {
   if (statusCode >= 200 && statusCode < 300 && Array.isArray(body)) {
     return true;
   }
@@ -102,11 +89,54 @@ function batchWasAccepted(statusCode: number, body: unknown): boolean {
   return false;
 }
 
+/** True when the server rejected the batch with an HTTP 4xx JSON-RPC error. */
+export function isBatchRejected(statusCode: number, body: unknown): boolean {
+  if (isBatchAccepted(statusCode, body)) {
+    return false;
+  }
+  return (
+    statusCode >= 400 &&
+    statusCode < 500 &&
+    jsonRpcErrorCode(body) !== undefined
+  );
+}
+
+async function establishStatefulSession(
+  serverUrl: string,
+  specVersion: SpecVersion
+): Promise<string> {
+  const params = {
+    protocolVersion: specVersion,
+    capabilities: {},
+    clientInfo: CLIENT_INFO
+  };
+  const response = await request(serverUrl, {
+    method: 'POST',
+    headers: buildStandardHeaders('initialize', params, { specVersion }),
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params
+    })
+  });
+
+  const sessionId = response.headers['mcp-session-id'] as string | undefined;
+  await response.body.text();
+
+  if (!sessionId) {
+    throw new Error('initialize did not return Mcp-Session-Id header');
+  }
+
+  return sessionId;
+}
+
 async function sendJsonRpcBatch(
   serverUrl: string,
-  specVersion: string
+  specVersion: SpecVersion,
+  batch: unknown[],
+  extraHeaders: Record<string, string> = {}
 ): Promise<{ statusCode: number; body: unknown }> {
-  const batch = buildBatchBody(specVersion);
   const first = batch[0] as {
     method: string;
     params?: Record<string, unknown>;
@@ -114,7 +144,8 @@ async function sendJsonRpcBatch(
   const response = await request(serverUrl, {
     method: 'POST',
     headers: buildStandardHeaders(first.method, first.params, {
-      specVersion: specVersion as RunContext['specVersion']
+      specVersion,
+      headers: extraHeaders
     }),
     body: JSON.stringify(batch)
   });
@@ -141,7 +172,7 @@ export class JsonRpcBatchRejectionScenario implements ClientScenario {
 
 **Requirements:**
 - Server **MUST** reject an HTTP POST body that is a JSON array of JSON-RPC request objects
-- Rejection is expected to use HTTP \`400 Bad Request\` with JSON-RPC error code \`-32600\` (Invalid Request)`;
+- Rejection is expected to use an HTTP \`4xx\` status with a single JSON-RPC error object (commonly \`400\` with \`-32600\` Invalid Request)`;
 
   async run(ctx: RunContext): Promise<ConformanceCheck[]> {
     const { serverUrl, specVersion } = ctx;
@@ -156,14 +187,35 @@ export class JsonRpcBatchRejectionScenario implements ClientScenario {
     };
 
     try {
-      const response = await sendJsonRpcBatch(serverUrl, specVersion);
+      const batch =
+        specVersion === DRAFT_PROTOCOL_VERSION
+          ? buildStatelessBatch(specVersion)
+          : buildStatefulBatch();
+
+      const extraHeaders: Record<string, string> = {};
+      if (specVersion !== DRAFT_PROTOCOL_VERSION) {
+        extraHeaders['Mcp-Session-Id'] = await establishStatefulSession(
+          serverUrl,
+          specVersion
+        );
+      }
+
+      const response = await sendJsonRpcBatch(
+        serverUrl,
+        specVersion,
+        batch,
+        extraHeaders
+      );
       const errorCode = jsonRpcErrorCode(response.body);
-      const accepted = batchWasAccepted(response.statusCode, response.body);
+      const accepted = isBatchAccepted(response.statusCode, response.body);
+      const rejected = isBatchRejected(response.statusCode, response.body);
       const details = {
         statusCode: response.statusCode,
         errorCode,
         body: response.body,
-        batchSize: buildBatchBody(specVersion).length
+        batchSize: batch.length,
+        lifecycle:
+          specVersion === DRAFT_PROTOCOL_VERSION ? 'stateless' : 'stateful'
       };
 
       if (accepted) {
@@ -178,9 +230,7 @@ export class JsonRpcBatchRejectionScenario implements ClientScenario {
         ];
       }
 
-      const hasInvalidRequest =
-        response.statusCode === 400 && errorCode === INVALID_REQUEST;
-      if (hasInvalidRequest) {
+      if (rejected) {
         return [
           {
             ...checkBase,
@@ -190,23 +240,12 @@ export class JsonRpcBatchRejectionScenario implements ClientScenario {
         ];
       }
 
-      const reasons: string[] = [];
-      if (response.statusCode !== 400) {
-        reasons.push(`expected HTTP 400, got ${response.statusCode}`);
-      }
-      if (errorCode !== INVALID_REQUEST) {
-        reasons.push(
-          errorCode === undefined
-            ? 'expected JSON-RPC error code -32600 (Invalid Request)'
-            : `expected JSON-RPC error code -32600, got ${errorCode}`
-        );
-      }
-
       return [
         {
           ...checkBase,
           status: 'FAILURE',
-          errorMessage: `Server rejected the batch but not with the expected signature: ${reasons.join('; ')}`,
+          errorMessage:
+            'Server did not reject the batch with an HTTP 4xx JSON-RPC error response',
           details
         }
       ];

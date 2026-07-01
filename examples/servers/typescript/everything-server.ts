@@ -1237,6 +1237,17 @@ const LEGACY_SESSION_PROTOCOL_VERSIONS = [
 
 // Handle POST requests - stateful mode
 app.post('/mcp', async (req, res) => {
+  if (Array.isArray(req.body)) {
+    return res.status(400).json({
+      jsonrpc: '2.0',
+      error: {
+        code: -32600,
+        message: 'Invalid Request: JSON-RPC batch requests are not supported'
+      },
+      id: null
+    });
+  }
+
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
   const reqVersion = req.headers['mcp-protocol-version'] as string | undefined;
   const body = req.body || {};
