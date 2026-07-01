@@ -25,8 +25,11 @@ import {
 
 /**
  * Tool name format validation tracks dated MCP spec prose (2025-11-25+
- * `#tool-names`), not the SEP-986 markdown file. specReferences link only to
- * the core specification; there is no sep-986.yaml traceability row.
+ * `#tool-names`), not the SEP-986 markdown file. There is no sep-986.yaml
+ * traceability row — the requirement lives in the core specification.
+ *
+ * specReferences order: core spec URLs first (authoritative), then SEP/history
+ * links for context only (SEP-986 markdown still documents stale 64 + `/` rules).
  *
  * Divergence to preserve when updating this check:
  * - SEP-986 markdown (modelcontextprotocol#986): 1–64 chars, `[A-Za-z0-9_./-]`
@@ -48,6 +51,15 @@ const TOOLS_NAME_FORMAT_SPEC_REFS = [
   {
     id: 'MCP-Tool-Names-Draft',
     url: 'https://modelcontextprotocol.io/specification/draft/server/tools#tool-names'
+  },
+  // Context only — not the rule source. SEP markdown was never updated to match PR #1603.
+  {
+    id: 'SEP-986-History',
+    url: 'https://github.com/modelcontextprotocol/modelcontextprotocol/issues/986'
+  },
+  {
+    id: 'SEP-986-Spec-Integration',
+    url: 'https://github.com/modelcontextprotocol/modelcontextprotocol/pull/1603'
   }
 ];
 

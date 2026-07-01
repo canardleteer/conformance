@@ -7,6 +7,10 @@
  * setRequestHandler(ListToolsRequestSchema) so tools/list advertises a name
  * that violates core spec prose at #tool-names. Proves tools-name-format emits
  * WARNING (SHOULD-level per AGENTS.md), not FAILURE. everything-server unchanged.
+ *
+ * Why "sep-986" in the filename: SEP-986 originated the rule, but the dated spec
+ * prose (PR #1603) diverged; see tools.ts specReferences for authoritative vs
+ * historical links.
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
