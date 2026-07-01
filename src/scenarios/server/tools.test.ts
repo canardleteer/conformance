@@ -7,24 +7,30 @@ describe('validateToolNameFormat', () => {
   });
 
   it('accepts all allowed character classes', () => {
-    expect(validateToolNameFormat('Aa0_.-/')).toBeNull();
+    expect(validateToolNameFormat('Aa0_.-')).toBeNull();
   });
 
   it('accepts a single-character name (lower length boundary)', () => {
     expect(validateToolNameFormat('a')).toBeNull();
   });
 
-  it('accepts a 64-character name (upper length boundary)', () => {
-    expect(validateToolNameFormat('a'.repeat(64))).toBeNull();
+  it('accepts a 128-character name (upper length boundary)', () => {
+    expect(validateToolNameFormat('a'.repeat(128))).toBeNull();
   });
 
   it('rejects an empty name', () => {
     expect(validateToolNameFormat('')).toMatch(/length 0 is outside/);
   });
 
-  it('rejects a 65-character name', () => {
-    expect(validateToolNameFormat('a'.repeat(65))).toMatch(
-      /length 65 is outside/
+  it('rejects a 129-character name', () => {
+    expect(validateToolNameFormat('a'.repeat(129))).toMatch(
+      /length 129 is outside/
+    );
+  });
+
+  it('rejects forward slash (allowed in SEP-986 markdown but not spec prose)', () => {
+    expect(validateToolNameFormat('namespace/tool')).toMatch(
+      /contains characters outside/
     );
   });
 
@@ -57,7 +63,7 @@ describe('buildToolsNameFormatCheck', () => {
   it('returns SUCCESS when all tool names are valid', () => {
     const check = buildToolsNameFormatCheck([
       { name: 'test_simple_text' },
-      { name: 'namespace/tool-v1.2' }
+      { name: 'admin.tools.list' }
     ]);
     expect(check.status).toBe('SUCCESS');
     expect(check.errorMessage).toBeUndefined();
@@ -65,33 +71,33 @@ describe('buildToolsNameFormatCheck', () => {
       toolCount: 2,
       results: {
         test_simple_text: 'valid',
-        'namespace/tool-v1.2': 'valid'
+        'admin.tools.list': 'valid'
       }
     });
   });
 
-  it('returns FAILURE with per-tool details when some names are invalid', () => {
+  it('returns WARNING with per-tool details when some names are invalid', () => {
     const check = buildToolsNameFormatCheck([
       { name: 'good_tool' },
       { name: 'bad name with spaces' },
-      { name: 'a'.repeat(65) }
+      { name: 'a'.repeat(129) }
     ]);
 
-    expect(check.status).toBe('FAILURE');
+    expect(check.status).toBe('WARNING');
     expect(check.errorMessage).toContain(
-      '2 tool name(s) violate SEP-986 format'
+      '2 tool name(s) violate spec Tool Names SHOULD rules'
     );
 
     const results = (check.details as { results: Record<string, string> })
       .results;
     expect(results['good_tool']).toBe('valid');
     expect(results['bad name with spaces']).toMatch(/^invalid: /);
-    expect(results['a'.repeat(65)]).toMatch(/^invalid: length 65/);
+    expect(results['a'.repeat(129)]).toMatch(/^invalid: length 129/);
   });
 
   it('flags a tool whose name is not a string', () => {
     const check = buildToolsNameFormatCheck([{ name: 123 as unknown }]);
-    expect(check.status).toBe('FAILURE');
+    expect(check.status).toBe('WARNING');
     const results = (check.details as { results: Record<string, string> })
       .results;
     expect(results['<tool[0] missing name>']).toBe(
@@ -99,9 +105,11 @@ describe('buildToolsNameFormatCheck', () => {
     );
   });
 
-  it('includes both MCP-Tools-List and SEP-986 spec references', () => {
+  it('includes MCP-Tool-Names spec reference and SEP-986 traceability link', () => {
     const check = buildToolsNameFormatCheck([{ name: 'ok' }]);
     const ids = check.specReferences?.map((r) => r.id);
-    expect(ids).toEqual(['MCP-Tools-List', 'SEP-986']);
+    expect(ids).toEqual(['MCP-Tool-Names', 'SEP-986']);
+    expect(check.specReferences?.[0]?.url).toContain('#tool-names');
+    expect(check.specReferences?.[1]?.url).toContain('issues/986');
   });
 });
