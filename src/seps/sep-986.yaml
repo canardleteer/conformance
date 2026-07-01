@@ -1,7 +1,8 @@
 sep: 986
-# spec_url points at integrated spec prose (authoritative), not seps/986-*.md
+# Traceability manifest (AGENTS.md): spec_url is authoritative integrated prose,
+# not seps/986-*.md. requirements[].text quotes the spec; check ID matches emitted slug.
 spec_url: https://modelcontextprotocol.io/specification/draft/server/tools#tool-names
 requirements:
-  # SEP-986 markdown still says 1-64 + '/'; PR #1603 landed 1-128, no '/'.
+  # SEP-986 markdown still says 1-64 + '/'; PR #1603 landed 1-128, no '/' in spec.
   - check: tools-name-format
     text: 'Tool names SHOULD be 1-128 characters and use only [A-Za-z0-9_.-]'

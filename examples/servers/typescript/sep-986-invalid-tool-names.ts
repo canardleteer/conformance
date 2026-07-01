@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * SEP-986 Negative Test Server
+ * SEP-986 negative test server.
  *
- * Advertises a tool whose name violates the 2025-11-25 spec Tool Names SHOULD
- * rules (contains a space). The tools-list scenario should emit WARNING for
- * tools-name-format against this server.
+ * AGENTS.md negative-fixture pattern: bypass SDK registerTool validation via
+ * setRequestHandler(ListToolsRequestSchema) so tools/list advertises a name
+ * that violates 2025-11-25 spec prose. Proves tools-name-format emits WARNING
+ * (SHOULD-level per AGENTS.md), not FAILURE. everything-server is unchanged.
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';

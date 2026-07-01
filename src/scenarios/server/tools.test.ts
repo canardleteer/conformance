@@ -121,6 +121,7 @@ describe('buildToolsNameFormatCheck', () => {
 });
 
 describe('toolNameFormatCheckApplies', () => {
+  // Locks version gate: no tools-name-format on 2025-03-26 / 2025-06-18 (AGENTS.md).
   it('is false before 2025-11-25 and true from that version onward', () => {
     expect(toolNameFormatCheckApplies('2025-03-26')).toBe(false);
     expect(toolNameFormatCheckApplies('2025-06-18')).toBe(false);
@@ -130,6 +131,7 @@ describe('toolNameFormatCheckApplies', () => {
 });
 
 describe('ToolsListScenario version gate', () => {
+  // Scenario-level gate: invalid names must not emit the check before 2025-11-25.
   function mockContext(
     specVersion: RunContext['specVersion'],
     tools: Array<{ name: string; description: string; inputSchema: object }>

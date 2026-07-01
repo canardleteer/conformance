@@ -40,17 +40,23 @@ const TOOL_NAME_PATTERN = /^[A-Za-z0-9_.-]+$/;
 const TOOL_NAME_MAX_LENGTH = 128;
 
 const TOOLS_NAME_FORMAT_SPEC_REFS = [
+  // Authoritative rule source: dated spec prose (AGENTS.md: verify spec diff, not SEP markdown).
   {
     id: 'MCP-Tool-Names',
     url: 'https://modelcontextprotocol.io/specification/2025-11-25/server/tools#tool-names'
   },
+  // Traceability back to SEP-986; the SEP file still documents stale 64 + '/' rules.
   {
     id: 'SEP-986',
     url: 'https://github.com/modelcontextprotocol/modelcontextprotocol/issues/986'
   }
 ];
 
-/** Tool Names SHOULD rules apply only from 2025-11-25 spec prose onward. */
+/**
+ * Tool Names SHOULD rules apply only from 2025-11-25 spec prose onward.
+ * tools-list stays introducedIn 2025-06-18 for structural MUST checks; gating
+ * here avoids false signals on versions that never had Tool Names prose.
+ */
 export function toolNameFormatCheckApplies(specVersion: SpecVersion): boolean {
   return specVersionAtLeast(specVersion, '2025-11-25');
 }
@@ -107,6 +113,7 @@ export function buildToolsNameFormatCheck(
 
   return {
     ...baseCheck,
+    // AGENTS.md: SHOULD in spec prose → WARNING (Tier-1 CI still treats as failure).
     status: violations.length === 0 ? 'SUCCESS' : 'WARNING',
     errorMessage:
       violations.length > 0
@@ -181,7 +188,9 @@ export class ToolsListScenario implements ClientScenario {
         }
       });
 
-      // Tool Names SHOULD rules first appear in 2025-11-25 spec prose (not SEP markdown alone).
+      // Gate per AGENTS.md version applicability: Tool Names prose is 2025-11-25+ only.
+      // everything-server already passes on applicable versions (positive path in
+      // all-scenarios.test.ts); failure proof is sep-986-invalid-tool-names.ts.
       if (toolNameFormatCheckApplies(ctx.specVersion)) {
         checks.push(buildToolsNameFormatCheck(result.tools));
       }
