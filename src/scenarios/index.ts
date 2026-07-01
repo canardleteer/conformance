@@ -66,6 +66,7 @@ import {
 } from './server/prompts';
 
 import { DNSRebindingProtectionScenario } from './server/dns-rebinding';
+import { JsonRpcBatchRejectionScenario } from './server/json-rpc-batch-rejection';
 import { CachingScenario } from './server/caching';
 
 // InputRequiredResult scenarios from (SEP-2322)
@@ -209,6 +210,7 @@ const allClientScenariosList: ClientScenario[] = [
 
   // Security scenarios
   new DNSRebindingProtectionScenario(),
+  new JsonRpcBatchRejectionScenario(),
 
   // Caching scenarios (SEP-2549)
   new CachingScenario(),
