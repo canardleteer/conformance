@@ -3,8 +3,10 @@
 /**
  * Negative test server that incorrectly accepts JSON-RPC batch arrays.
  *
- * The json-rpc-batch-rejection scenario should emit FAILURE for
- * json-rpc-batch-rejected against this server.
+ * AGENTS.md negative-fixture pattern: deliberately broken server in
+ * examples/servers/typescript/, exercised from negative.test.ts (not
+ * everything-server). Proves json-rpc-batch-rejected emits FAILURE when a
+ * server returns 200 with a batch response array.
  */
 
 import express from 'express';

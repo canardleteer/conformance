@@ -1,3 +1,5 @@
+// Unit tests for batch acceptance/rejection helpers used by
+// json-rpc-batch-rejection.ts (AGENTS.md: prove the check logic, not only E2E).
 import { describe, it, expect } from 'vitest';
 import {
   isBatchAccepted,

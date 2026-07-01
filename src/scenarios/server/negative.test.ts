@@ -163,6 +163,7 @@ describe('Server scenario negative tests', () => {
   });
 
   describe('json-rpc-batch-rejection', () => {
+    // AGENTS.md: negative vitest pins the check slug, not failures.length > 0.
     let serverProcess: ChildProcess | null = null;
     const PORT = 3008;
 

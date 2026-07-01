@@ -210,6 +210,7 @@ const allClientScenariosList: ClientScenario[] = [
 
   // Security scenarios
   new DNSRebindingProtectionScenario(),
+  // 2025-06-18+ wire requirement; negative proof in accepts-json-rpc-batch.ts
   new JsonRpcBatchRejectionScenario(),
 
   // Caching scenarios (SEP-2549)

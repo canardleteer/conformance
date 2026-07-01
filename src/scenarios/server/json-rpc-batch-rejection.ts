@@ -3,6 +3,17 @@
  *
  * Batch support was removed in 2025-06-18; servers MUST reject POST bodies
  * that are JSON arrays of request objects.
+ *
+ * Probe design (AGENTS.md: distinguish rejection from unrelated errors):
+ * - Stateful (2025-06-18 / 2025-11-25): initialize first, then POST a two-request
+ *   ping batch with Mcp-Session-Id so the check exercises batch handling on an
+ *   established session rather than "missing session ID" routing.
+ * - Draft (stateless): POST a two-method batch with per-request _meta.
+ *
+ * Success criteria: any HTTP 4xx with a single JSON-RPC error object. We do
+ * not require a specific error code (-32600 vs implementation-defined -320xx)
+ * because SDKs and wrappers disagree today; acceptance is 2xx with batch or
+ * single-request results. Negative proof: accepts-json-rpc-batch.ts.
  */
 
 import {
@@ -91,6 +102,8 @@ export function isBatchAccepted(statusCode: number, body: unknown): boolean {
 
 /** True when the server rejected the batch with an HTTP 4xx JSON-RPC error. */
 export function isBatchRejected(statusCode: number, body: unknown): boolean {
+  // Intentionally any 4xx + JSON-RPC error, not only -32600: reference servers
+  // and SDK wrappers may surface batch rejection through different codes.
   if (isBatchAccepted(statusCode, body)) {
     return false;
   }
@@ -105,6 +118,8 @@ async function establishStatefulSession(
   serverUrl: string,
   specVersion: SpecVersion
 ): Promise<string> {
+  // Raw initialize (not ctx.connect()) so the subsequent batch POST is the
+  // only array on the wire under test; session id comes from response headers.
   const params = {
     protocolVersion: specVersion,
     capabilities: {},
