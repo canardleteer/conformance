@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { buildToolsNameFormatCheck, validateToolNameFormat } from './tools.js';
+import {
+  buildToolsNameFormatCheck,
+  toolNameFormatCheckApplies,
+  ToolsListScenario,
+  validateToolNameFormat
+} from './tools.js';
+import type { Connection, RunContext } from '../../connection';
 
 describe('validateToolNameFormat', () => {
   it('accepts a typical snake_case name', () => {
@@ -111,5 +117,67 @@ describe('buildToolsNameFormatCheck', () => {
     expect(ids).toEqual(['MCP-Tool-Names', 'SEP-986']);
     expect(check.specReferences?.[0]?.url).toContain('#tool-names');
     expect(check.specReferences?.[1]?.url).toContain('issues/986');
+  });
+});
+
+describe('toolNameFormatCheckApplies', () => {
+  it('is false before 2025-11-25 and true from that version onward', () => {
+    expect(toolNameFormatCheckApplies('2025-03-26')).toBe(false);
+    expect(toolNameFormatCheckApplies('2025-06-18')).toBe(false);
+    expect(toolNameFormatCheckApplies('2025-11-25')).toBe(true);
+    expect(toolNameFormatCheckApplies('2026-07-28')).toBe(true);
+  });
+});
+
+describe('ToolsListScenario version gate', () => {
+  function mockContext(
+    specVersion: RunContext['specVersion'],
+    tools: Array<{ name: string; description: string; inputSchema: object }>
+  ): RunContext {
+    const connection: Connection = {
+      notifications: [],
+      request: async () => ({ tools }),
+      discover: async () => ({}),
+      close: async () => {}
+    };
+
+    return {
+      serverUrl: 'http://example.test/mcp',
+      specVersion,
+      connect: async () => connection
+    };
+  }
+
+  it('does not emit tools-name-format on 2025-06-18 even when names violate 2025-11-25 rules', async () => {
+    const scenario = new ToolsListScenario();
+    const checks = await scenario.run(
+      mockContext('2025-06-18', [
+        {
+          name: 'bad name',
+          description: 'invalid under 2025-11-25 rules',
+          inputSchema: { type: 'object' }
+        }
+      ])
+    );
+
+    expect(checks.some((c) => c.id === 'tools-name-format')).toBe(false);
+    expect(checks.find((c) => c.id === 'tools-list')?.status).toBe('SUCCESS');
+  });
+
+  it('emits tools-name-format on 2025-11-25 when names violate spec prose', async () => {
+    const scenario = new ToolsListScenario();
+    const checks = await scenario.run(
+      mockContext('2025-11-25', [
+        {
+          name: 'bad name',
+          description: 'invalid under 2025-11-25 rules',
+          inputSchema: { type: 'object' }
+        }
+      ])
+    );
+
+    expect(checks.find((c) => c.id === 'tools-name-format')?.status).toBe(
+      'WARNING'
+    );
   });
 });

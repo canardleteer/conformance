@@ -6,7 +6,8 @@ import {
   ClientScenario,
   ConformanceCheck,
   DRAFT_PROTOCOL_VERSION,
-  specVersionAtLeast
+  specVersionAtLeast,
+  type SpecVersion
 } from '../../types';
 import type { RunContext } from '../../connection';
 import type {
@@ -48,6 +49,11 @@ const TOOLS_NAME_FORMAT_SPEC_REFS = [
     url: 'https://github.com/modelcontextprotocol/modelcontextprotocol/issues/986'
   }
 ];
+
+/** Tool Names SHOULD rules apply only from 2025-11-25 spec prose onward. */
+export function toolNameFormatCheckApplies(specVersion: SpecVersion): boolean {
+  return specVersionAtLeast(specVersion, '2025-11-25');
+}
 
 export function validateToolNameFormat(name: string): string | null {
   if (name.length < 1 || name.length > TOOL_NAME_MAX_LENGTH) {
@@ -176,7 +182,7 @@ export class ToolsListScenario implements ClientScenario {
       });
 
       // Tool Names SHOULD rules first appear in 2025-11-25 spec prose (not SEP markdown alone).
-      if (specVersionAtLeast(ctx.specVersion, '2025-11-25')) {
+      if (toolNameFormatCheckApplies(ctx.specVersion)) {
         checks.push(buildToolsNameFormatCheck(result.tools));
       }
 
