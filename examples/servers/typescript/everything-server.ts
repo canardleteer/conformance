@@ -1235,29 +1235,44 @@ const LEGACY_SESSION_PROTOCOL_VERSIONS = [
   '2025-11-25'
 ];
 
+// Protocol revisions that MUST support receiving JSON-RPC batches
+// (2025-03-26 base protocol §Batching). Later revisions removed that
+// requirement; the array guard below rejects batches only for those.
+const BATCHING_REQUIRED_PROTOCOL_VERSIONS = new Set([
+  '2024-11-05',
+  '2025-03-26'
+]);
+
 // Handle POST requests - stateful mode
 app.post('/mcp', async (req, res) => {
-  // AGENTS.md: all-scenarios.test.ts runs every active scenario against
-  // everything-server as the reference "does not false-positive" fixture.
-  // Batch arrays must be rejected from 2025-06-18 onward, but this handler
-  // reads req.body.method before the SDK transport sees the POST body. Without
-  // an explicit array guard, batch probes either hit session routing (-32000)
-  // for the wrong reason or reach the transport and get processed. Failure
-  // proof lives in accepts-json-rpc-batch.ts + negative.test.ts; this guard
-  // keeps the reference server aligned with the json-rpc-batch-rejection check.
-  if (Array.isArray(req.body)) {
-    return res.status(400).json({
-      jsonrpc: '2.0',
-      error: {
-        code: -32600,
-        message: 'Invalid Request: JSON-RPC batch requests are not supported'
-      },
-      id: null
-    });
-  }
-
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
   const reqVersion = req.headers['mcp-protocol-version'] as string | undefined;
+
+  // AGENTS.md: all-scenarios.test.ts runs every active scenario against
+  // everything-server as the reference "does not false-positive" fixture.
+  // From 2025-06-18 onward, batch arrays must be rejected so the
+  // json-rpc-batch-rejection scenario does not false-positive. This handler
+  // reads req.body.method before the SDK transport sees the POST body;
+  // without an explicit array guard, batch probes either hit session routing
+  // (-32000) for the wrong reason or get processed. Failure proof lives in
+  // accepts-json-rpc-batch.ts + negative.test.ts.
+  //
+  // Do NOT reject for 2025-03-26 (or when the version header is absent — the
+  // transport SHOULD assume 2025-03-26): that revision MUST support receiving
+  // JSON-RPC batches. Fall through to the existing session/SDK path instead.
+  if (Array.isArray(req.body)) {
+    const protocolVersion = reqVersion ?? '2025-03-26';
+    if (!BATCHING_REQUIRED_PROTOCOL_VERSIONS.has(protocolVersion)) {
+      return res.status(400).json({
+        jsonrpc: '2.0',
+        error: {
+          code: -32600,
+          message: 'Invalid Request: JSON-RPC batch requests are not supported'
+        },
+        id: null
+      });
+    }
+  }
   const body = req.body || {};
   const method = body.method;
   const id = body.id ?? null;
