@@ -1,32 +1,9 @@
 #!/usr/bin/env node
 
 /**
- * Negative test server for spec Tool Names SHOULD rules (2025-11-25+).
- *
- * AGENTS.md negative-fixture pattern: bypass SDK registerTool validation via
- * setRequestHandler(ListToolsRequestSchema) so tools/list advertises a name
- * that violates core spec prose at #tool-names. Proves tools-name-format emits
- * WARNING (SHOULD-level per AGENTS.md), not FAILURE. everything-server unchanged.
- *
- * ## Why this file is not named after SEP-986
- *
- * Tool name format rules trace to [SEP-986](https://github.com/modelcontextprotocol/modelcontextprotocol/issues/986)
- * (opened 2025-07-16), but the **authoritative rules live in dated spec prose**,
- * not the SEP markdown artifact. That split is a process wart worth preserving:
- *
- * - **SEP-986 markdown** (`seps/986-specify-format-for-tool-names.md`) still
- *   documents stale rules: 1–64 chars, `[A-Za-z0-9_./-]` including `/`. The
- *   finalized SEP file was **never updated** after spec integration.
- * - **Integrated spec** ([PR #1603](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/1603),
- *   Oct 2025) landed different prose in draft, then **2025-11-25** `#tool-names`:
- *   1–128 chars, `[A-Za-z0-9_.-]` only (no `/`).
- * - **Conformance #240** incorrectly encoded the stale SEP markdown (64 + `/`,
- *   FAILURE severity). This suite follows the integrated spec diff per AGENTS.md;
- *   see `tools.ts` block comment and `specReferences` (core URLs first, SEP links
- *   context-only). There is intentionally **no `sep-986.yaml`** traceability row.
- *
- * Naming the fixture after the SEP would imply traceability we deliberately
- * declined — and would obscure that the SEP artifact and published spec diverged.
+ * Negative fixture for the tools-name-format check: advertises tool names that
+ * violate the 2025-11-25 Tool Names rules (spec #tool-names) by bypassing the
+ * SDK's registerTool validation, so the check can be shown to emit WARNING.
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';

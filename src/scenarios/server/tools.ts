@@ -24,21 +24,9 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 
 /**
- * Tool name format validation tracks dated MCP spec prose (2025-11-25+
- * `#tool-names`), not the SEP-986 markdown file. There is no sep-986.yaml
- * traceability row — the requirement lives in the core specification.
- *
- * specReferences order: core spec URLs first (authoritative), then SEP/history
- * links for context only (SEP-986 markdown still documents stale 64 + `/` rules).
- *
- * Divergence to preserve when updating this check:
- * - SEP-986 markdown (modelcontextprotocol#986): 1–64 chars, `[A-Za-z0-9_./-]`
- *   including `/` — never updated after spec integration.
- * - Published spec (PR modelcontextprotocol#1603): 1–128 chars,
- *   `[A-Za-z0-9_.-]` only (no `/`).
- *
- * Conformance #240 incorrectly encoded the stale SEP rules; this check follows
- * the integrated spec diff per AGENTS.md.
+ * Tool name rules per the 2025-11-25 spec prose (#tool-names): 1–128 chars of
+ * [A-Za-z0-9_.-]. (The SEP-986 markdown still shows the older 64-char / `/`
+ * rules; the published spec is authoritative.)
  */
 const TOOL_NAME_PATTERN = /^[A-Za-z0-9_.-]+$/;
 const TOOL_NAME_MAX_LENGTH = 128;
@@ -52,7 +40,7 @@ const TOOLS_NAME_FORMAT_SPEC_REFS = [
     id: 'MCP-Tool-Names-Draft',
     url: 'https://modelcontextprotocol.io/specification/draft/server/tools#tool-names'
   },
-  // Context only — not the rule source. SEP markdown was never updated to match PR #1603.
+  // Background only; the dated spec above is the rule source.
   {
     id: 'SEP-986-History',
     url: 'https://github.com/modelcontextprotocol/modelcontextprotocol/issues/986'
@@ -63,11 +51,7 @@ const TOOLS_NAME_FORMAT_SPEC_REFS = [
   }
 ];
 
-/**
- * Tool Names SHOULD rules apply only from 2025-11-25 spec prose onward.
- * tools-list stays introducedIn 2025-06-18 for structural MUST checks; gating
- * here avoids false signals on versions that never had Tool Names prose.
- */
+/** The Tool Names rules first appear in the 2025-11-25 revision. */
 export function toolNameFormatCheckApplies(specVersion: SpecVersion): boolean {
   return specVersionAtLeast(specVersion, '2025-11-25');
 }
@@ -124,7 +108,6 @@ export function buildToolsNameFormatCheck(
 
   return {
     ...baseCheck,
-    // AGENTS.md: SHOULD in spec prose → WARNING (Tier-1 CI still treats as failure).
     status: violations.length === 0 ? 'SUCCESS' : 'WARNING',
     errorMessage:
       violations.length > 0
@@ -199,9 +182,6 @@ export class ToolsListScenario implements ClientScenario {
         }
       });
 
-      // Gate per AGENTS.md version applicability: Tool Names prose is 2025-11-25+ only.
-      // everything-server already passes on applicable versions (positive path in
-      // all-scenarios.test.ts); failure proof is invalid-tool-names.ts.
       if (toolNameFormatCheckApplies(ctx.specVersion)) {
         checks.push(buildToolsNameFormatCheck(result.tools));
       }
