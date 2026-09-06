@@ -508,7 +508,7 @@ Implement tool \`test_tool_with_logging\` with no arguments.
     const checks: ConformanceCheck[] = [];
 
     try {
-      const connection = await connectToServer(serverUrl);
+      const connection = await connectToServer(serverUrl, {}, ctx.specVersion);
       const notifications = new NotificationCollector(connection.client);
 
       // Set logging level to debug
@@ -836,7 +836,7 @@ Implement tool \`test_sampling\` with argument:
     const checks: ConformanceCheck[] = [];
 
     try {
-      const connection = await connectToServer(serverUrl);
+      const connection = await connectToServer(serverUrl, {}, ctx.specVersion);
 
       let samplingRequested = false;
       connection.client.setRequestHandler(
@@ -973,7 +973,7 @@ Implement tool \`test_elicitation\` with argument:
     const checks: ConformanceCheck[] = [];
 
     try {
-      const connection = await connectToServer(serverUrl);
+      const connection = await connectToServer(serverUrl, {}, ctx.specVersion);
 
       let elicitationRequested = false;
       connection.client.setRequestHandler(
